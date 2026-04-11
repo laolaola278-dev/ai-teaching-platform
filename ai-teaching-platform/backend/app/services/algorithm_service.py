@@ -46,10 +46,11 @@ class AlgorithmService:
     async def get_training_jobs(
         self, 
         skip: int = 0, 
-        limit: int = 100
+        limit: int = 100,
+        status: Optional[TrainingStatus] = None
     ) -> List[TrainingJobModel]:
         """Get a list of training jobs with pagination."""
-        return await self.repository.get_training_jobs(skip=skip, limit=limit)
+        return await self.repository.get_training_jobs(skip=skip, limit=limit, status=status)
     
     async def update_training_job(
         self, 

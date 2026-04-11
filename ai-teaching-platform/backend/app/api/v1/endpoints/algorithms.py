@@ -63,11 +63,13 @@ async def get_training_job(
 async def list_training_jobs(
     skip: int = 0,
     limit: int = 100,
+    status: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> List[TrainingJob]:
     """List all training jobs."""
     service = AlgorithmService(db)
-    jobs = await service.get_training_jobs(skip=skip, limit=limit)
+    s = TrainingStatus(status) if status else None
+    jobs = await service.get_training_jobs(skip=skip, limit=limit, status=s)
     return jobs
 
 

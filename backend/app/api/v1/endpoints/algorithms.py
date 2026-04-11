@@ -4,10 +4,17 @@ from __future__ import annotations
 from typing import Dict
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.api.v1.dependencies import get_db
+from app.services.algorithm_service import AlgorithmService
+from app.schemas.algorithm import TrainingJob as TrainingJobSchema
+from app.schemas.algorithm import TrainingJobCreate, TrainingJobUpdate, AlgorithmRequest
+from app.schemas.algorithm import TrainingStatus
+import asyncio
+from typing import List, Optional
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 router = APIRouter()
@@ -26,21 +33,17 @@ class PredictRequest(BaseModel):
     parameters: Dict[str, object] = {}
 
 
-@router.post("/train")
-async def train_algorithm(req: TrainRequest, db=Depends(get_db)):
-    """Skeleton endpoint to start a training job."""
-    # In a full implementation, this would create a TrainingJob in DB and enqueue a worker.
-    job_id = str(uuid.uuid4())
-    return {
-        "job_id": job_id,
-        "status": "pending",
-        "algorithm_type": req.algorithm_type,
-        "parameters": req.parameters,
-        "config": req.config,
-    }
+@router.post("/train", response_model=TrainingJobSchema)
+async def train_algorithm(req: AlgorithmRequest, db: AsyncSession = Depends(get_db)):
+    """Create a new training job and kick off training (async)."""
+    service = AlgorithmService(db)
+    job = await service.create_training_job(req)
+    # schedule background execution
+    asyncio.create_task(service.execute_training(job.id, req))
+    return job
 
 
-@router.post("/predict")
+@router.post("/predict", response_model=dict)
 async def predict_algorithm(req: PredictRequest, db=Depends(get_db)):
     """Skeleton endpoint to run a prediction."""
     # Placeholder response; a real implementation would load a model and run inference.
@@ -50,3 +53,34 @@ async def predict_algorithm(req: PredictRequest, db=Depends(get_db)):
         "predictions": [],
         "notes": "This is a skeleton endpoint; integrate with actual model runner.",
     }
+
+@router.get("/jobs", response_model=list[TrainingJobSchema])
+async def list_training_jobs(skip: int = 0, limit: int = 50, status: Optional[str] = None, db: AsyncSession = Depends(get_db)):
+    service = AlgorithmService(db)
+    s = TrainingStatus(status) if status is not None else None
+    jobs = await service.get_training_jobs(skip=skip, limit=limit, status=s)
+    return jobs
+
+@router.get("/jobs/{job_id}", response_model=TrainingJobSchema)
+async def get_training_job(job_id: str, db: AsyncSession = Depends(get_db)):
+    service = AlgorithmService(db)
+    job = await service.get_training_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Training job not found")
+    return job
+
+@router.patch("/jobs/{job_id}", response_model=TrainingJobSchema)
+async def update_training_job(job_id: str, update: TrainingJobUpdate, db: AsyncSession = Depends(get_db)):
+    service = AlgorithmService(db)
+    updated = await service.update_training_job(UUID(job_id) if isinstance(job_id, str) else job_id, update.model_dump(exclude_unset=True))
+    if not updated:
+        raise HTTPException(status_code=404, detail="Training job not found")
+    return updated
+
+@router.delete("/jobs/{job_id}")
+async def delete_training_job(job_id: str, db: AsyncSession = Depends(get_db)):
+    service = AlgorithmService(db)
+    success = await service.repository.delete_training_job(UUID(job_id)) if hasattr(service, 'repository') else False
+    if not success:
+        raise HTTPException(status_code=404, detail="Training job not found")
+    return {"status": "deleted"}
