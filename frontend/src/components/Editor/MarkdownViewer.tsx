@@ -1,17 +1,17 @@
-import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import 'katex/dist/katex.min.css';
-import { KaTeX } from 'katex';
+import React from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 
 type Props = {
-  content: string;
-};
+  content: string
+}
 
-// Simple Markdown viewer; KaTeX can be extended via rehype-katex for full math rendering.
 export const MarkdownViewer: React.FC<Props> = ({ content }) => {
   return (
     <div style={{ padding: 8 }}>
-      <ReactMarkdown>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]} children={content} />
     </div>
-  );
-};
+  )
+}
