@@ -8,6 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.api.v1.dependencies import get_db
+from app.api.v1.dependencies.auth import get_current_user, require_role
+from app.api.v1.dependencies.auth import get_current_user
 from app.services.algorithm_service import AlgorithmService
 from app.schemas.algorithm import TrainingJob as TrainingJobSchema
 from app.schemas.algorithm import TrainingJobCreate, TrainingJobUpdate, AlgorithmRequest
@@ -34,7 +36,7 @@ class PredictRequest(BaseModel):
 
 
 @router.post("/train", response_model=TrainingJobSchema)
-async def train_algorithm(req: AlgorithmRequest, db: AsyncSession = Depends(get_db)):
+async def train_algorithm(req: AlgorithmRequest, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user), _admin: bool = Depends(require_role("admin"))):
     """Create a new training job and kick off training (async)."""
     service = AlgorithmService(db)
     job = await service.create_training_job(req)

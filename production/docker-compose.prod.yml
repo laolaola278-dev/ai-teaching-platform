@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ai_teaching_platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  backend:
+    build: ../backend
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres/ai_teaching_platform
+  frontend:
+    build: ../frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx-prod.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+volumes:
+  postgres_data:

@@ -1,0 +1,9 @@
+server {
+  listen 443 ssl;
+  server_name your.domain;
+  ssl_certificate /path/to/fullchain.pem;
+  ssl_certificate_key /path/to/privkey.pem;
+  location / {
+    proxy_pass http://backend:8000;
+  }
+}

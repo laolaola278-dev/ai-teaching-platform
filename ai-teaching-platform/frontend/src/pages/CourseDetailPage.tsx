@@ -1,6 +1,12 @@
 import { useParams, Link } from 'react-router-dom'
 import { FiArrowLeft, FiBook, FiClock, FiUsers, FiBarChart, FiChevronRight } from 'react-icons/fi'
 import React, { useEffect, useState } from 'react'
+import Alert from '@mui/material/Alert'
+import IconButton from '@mui/material/IconButton'
+import RefreshIcon from '@mui/icons-material/Refresh'
+import CircularProgress from '@mui/material/CircularProgress'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
 import { MarkdownViewer } from '../components/Editor/MarkdownViewer'
 
 type Chapter = { id: string; title: string; description?: string; duration?: string; notebooks?: number; completed?: boolean }
@@ -11,28 +17,63 @@ type CourseAPI = {
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>()
   const [course, setCourse] = useState<CourseAPI | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const fetchCourse = () => {
+    setLoading(true)
+    setError(null)
+    if (!courseId) {
+      setLoading(false)
+      return
+    }
+    fetch(`/api/v1/courses/${courseId}`)
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then((data: CourseAPI) => {
+        setCourse(data)
+        setLoading(false)
+      })
+      .catch(() => {
+        setError('Failed to load course data.')
+        setLoading(false)
+      })
+  }
 
   useEffect(() => {
-    if (courseId) {
-      fetch(`/api/v1/courses/${courseId}`)
-        .then(r => r.json())
-        .then((data: CourseAPI) => setCourse(data))
-        .catch(() => {
-          // Fallback to a small mock to render basic UI without API
-          setCourse({ id: courseId, title: courseId, description: 'Course description (demo)', longDescription: '', instructors: '', level: '', language: 'en', duration: '', students: 0, rating: 0, chapters: [], prerequisites: [], tools: [] as string[] })
-        })
-    }
+    fetchCourse()
   }, [courseId])
 
-  if (!course) {
+  if (loading) {
+    return (
+      <div className="text-center py-12" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <CircularProgress color="primary" />
+        <Typography variant="body1" style={{ marginTop: 8 }}>Loading course...</Typography>
+      </div>
+    )
+  }
+  if (error) {
     return (
       <div className="text-center py-12">
-        <h1 className="text-2xl font-bold text-gray-900">Course not found</h1>
-        <p className="mt-2 text-gray-600">The requested course does not exist.</p>
-        <Link to="/courses" className="mt-4 inline-flex items-center text-primary-600 hover:text-primary-700">
-          <FiArrowLeft className="mr-2" />
+        <Alert severity="error" action={
+          <IconButton color="inherit" size="small" onClick={() => fetchCourse()} aria-label="retry">
+            <RefreshIcon fontSize="inherit" />
+          </IconButton>
+        }>{error}</Alert>
+      </div>
+    )
+  }
+  if (!course) {
+    return (
+      <div className="text-center py-12" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Typography variant="h5">No course data available</Typography>
+        <Button variant="contained" color="primary" startIcon={<RefreshIcon />} onClick={() => fetchCourse()} sx={{ mt: 2 }}>
+          Reload
+        </Button>
+        <Button variant="text" color="primary" href="/courses" sx={{ mt: 1 }}>
           Back to Courses
-        </Link>
+        </Button>
       </div>
     )
   }

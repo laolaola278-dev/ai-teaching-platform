@@ -1,11 +1,20 @@
-"""API router aggregator for v1 endpoints."""
+"""Main version 1 API router that collects all endpoints."""
 from fastapi import APIRouter
 
-from .endpoints import algorithms as algorithms_endpoint
-from .endpoints import courses as courses_endpoint
+# Import all v1 endpoints
+from app.api.v1.endpoints import health, courses, users, algorithms, auth, notebooks
 
 api_router = APIRouter()
 
-# Include sub-routers
-api_router.include_router(algorithms_endpoint.router, prefix="/algorithms", tags=["algorithms"])
-api_router.include_router(courses_endpoint.router, prefix="/courses", tags=["courses"])
+# Health
+api_router.include_router(health.router, tags=["health"])
+# Courses
+api_router.include_router(courses.router, prefix="/courses", tags=["courses"])
+# Users
+api_router.include_router(users.router, prefix="/users", tags=["users"])
+# Algorithms
+api_router.include_router(algorithms.router, prefix="/algorithms", tags=["algorithms"])
+# Notebooks (protected write endpoints)
+api_router.include_router(notebooks.router, prefix="/notebooks", tags=["notebooks"])
+# Auth
+api_router.include_router(auth.router, prefix="/auth", tags=["auth"])

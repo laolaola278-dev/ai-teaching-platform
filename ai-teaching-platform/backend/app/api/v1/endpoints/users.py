@@ -7,6 +7,7 @@ from typing import List, Optional
 
 from app.core.database import get_db
 from app.schemas.user import User, UserCreate, UserUpdate
+from app.core.security import hash_password
 from app.services.user_service import UserService
 
 router = APIRouter()
@@ -44,7 +45,12 @@ async def create_user(
 ) -> User:
     """Create a new user."""
     service = UserService(db)
-    return await service.create_user(user)
+    data = user.dict()
+    if "password" in data and data["password"]:
+        data["password"] = hash_password(data["password"])
+    # Rebuild the Pydantic model with hashed password if needed
+    user_hashed = UserCreate(**data) if "password" in data else user
+    return await service.create_user(user_hashed)
 
 
 @router.put("/{user_id}", response_model=User)
